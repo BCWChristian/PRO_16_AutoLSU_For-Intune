@@ -18,6 +18,11 @@ if ($DetectExitCode -eq 1) {
     Write-Host "`nDetection returned Exit Code 1. Running Remediation Script..." -ForegroundColor Yellow
     $Process = Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$RemediatePath`"" -Wait -PassThru -NoNewWindow
     Write-Host "`nRemediation finished with Exit Code: $($Process.ExitCode)" -ForegroundColor Green
-} else {
+    exit $Process.ExitCode
+} elseif ($DetectExitCode -eq 0) {
     Write-Host "`nDetection returned Exit Code 0. System is compliant. Skipping Remediation." -ForegroundColor Green
+    exit 0
+} else {
+    Write-Error "Detection failed with exit code: $DetectExitCode"
+    exit $DetectExitCode
 }

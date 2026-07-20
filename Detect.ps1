@@ -32,7 +32,12 @@ try {
         
         if ($LastRunStr) {
             $LastRunDate = [datetime]::Parse($LastRunStr)
-            $DaysSinceRun = (Get-Date) - $LastRunDate
+            $Now = Get-Date
+            if ($LastRunDate -gt $Now) {
+                Write-Warning "LastDriverUpdate is in the future; remediation is required."
+                exit 1
+            }
+            $DaysSinceRun = $Now - $LastRunDate
             
             if ($DaysSinceRun.TotalDays -lt $MaxDaysOld) {
                 Write-Output "Compliant: Lenovo update was run $($DaysSinceRun.ToString('dd')) days ago (Threshold: $MaxDaysOld days)."

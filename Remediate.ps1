@@ -24,15 +24,27 @@ if ($Manufacturer.ToUpper().Trim() -notin $AllowedManufacturers) {
 
 function Set-SuccessStamp {
     $RegKey = "HKLM:\SOFTWARE\IT_Config\LenovoUpdate"
-    $RegValueName = "LastDriverUpdate"
     
     if (-not (Test-Path -Path $RegKey)) {
         New-Item -Path $RegKey -Force -ErrorAction Stop | Out-Null
     }
     
     $CurrentDate = Get-Date -Format "o"
-    Set-ItemProperty -Path $RegKey -Name $RegValueName -Value $CurrentDate -ErrorAction Stop
+    Set-ItemProperty -Path $RegKey -Name "LastDriverUpdate" -Value $CurrentDate -ErrorAction Stop
+    Set-ItemProperty -Path $RegKey -Name "LastUpdateAttempt" -Value $CurrentDate -ErrorAction Stop
     Write-Output "Success timestamp written to registry."
+}
+
+function Set-AttemptStamp {
+    $RegKey = "HKLM:\SOFTWARE\IT_Config\LenovoUpdate"
+    
+    if (-not (Test-Path -Path $RegKey)) {
+        New-Item -Path $RegKey -Force -ErrorAction Stop | Out-Null
+    }
+    
+    $CurrentDate = Get-Date -Format "o"
+    Set-ItemProperty -Path $RegKey -Name "LastUpdateAttempt" -Value $CurrentDate -ErrorAction Stop
+    Write-Output "Attempt timestamp written to registry."
 }
 
 # Lenovo System Update is usually located here on Lenovo commercial devices
@@ -61,7 +73,18 @@ try {
     Write-Host "=======================================================" -ForegroundColor Cyan
     Write-Host "Running in background, please wait..." -NoNewline
 
-    $Process = Start-Process -FilePath $TvsuPath -ArgumentList $TvsuArgs -Wait -PassThru -NoNewWindow
+    $Process = Start-Process -FilePath $TvsuPath -ArgumentList $TvsuArgs -PassThru -NoNewWindow
+    
+    try {
+        $Process | Wait-Process -Timeout 7200 -ErrorAction Stop
+    } catch {
+        if (-not $Process.HasExited) {
+            Write-Warning "TVSU exceeded the 2-hour timeout. Forcing process to stop."
+            $Process | Stop-Process -Force
+            Set-AttemptStamp
+            exit 1
+        }
+    }
     
     Write-Host "`nDone!" -ForegroundColor Green
     $ExitCode = $Process.ExitCode
@@ -74,8 +97,8 @@ try {
         exit 0
     } else {
         Write-Warning "TVSU finished with unexpected exit code: $ExitCode"
-        Set-SuccessStamp # We still stamp it so it doesn't loop infinitely failing every day
-        exit 0
+        Set-AttemptStamp
+        exit 1
     }
 } catch {
     Write-Error "Failed to execute TVSU: $_"

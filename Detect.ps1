@@ -43,6 +43,14 @@ try {
                 Write-Output "Compliant: Lenovo update was run $($DaysSinceRun.ToString('dd')) days ago (Threshold: $MaxDaysOld days)."
                 exit 0
             } else {
+                $LastAttemptStr = Get-ItemPropertyValue -Path $RegKey -Name "LastUpdateAttempt" -ErrorAction SilentlyContinue
+                if ($LastAttemptStr) {
+                    $LastAttemptDate = [datetime]::Parse($LastAttemptStr)
+                    if ($LastAttemptDate -gt $LastRunDate -and $LastAttemptDate -le $Now -and ($Now - $LastAttemptDate).TotalDays -le $MaxDaysOld) {
+                        Write-Warning "Non-Compliant: Lenovo update was run $($DaysSinceRun.ToString('dd')) days ago. A recent attempt on $($LastAttemptDate.ToString('yyyy-MM-dd')) failed."
+                        exit 1
+                    }
+                }
                 Write-Output "Non-Compliant: Lenovo update was run $($DaysSinceRun.ToString('dd')) days ago. Needs remediation."
                 exit 1
             }

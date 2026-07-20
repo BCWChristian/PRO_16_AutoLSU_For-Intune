@@ -27,11 +27,11 @@ function Set-SuccessStamp {
     $RegValueName = "LastDriverUpdate"
     
     if (-not (Test-Path -Path $RegKey)) {
-        New-Item -Path $RegKey -Force | Out-Null
+        New-Item -Path $RegKey -Force -ErrorAction Stop | Out-Null
     }
     
     $CurrentDate = Get-Date -Format "o"
-    Set-ItemProperty -Path $RegKey -Name $RegValueName -Value $CurrentDate
+    Set-ItemProperty -Path $RegKey -Name $RegValueName -Value $CurrentDate -ErrorAction Stop
     Write-Output "Success timestamp written to registry."
 }
 
